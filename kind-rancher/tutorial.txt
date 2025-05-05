@@ -1,0 +1,62 @@
+# Criação do cluster kind:
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+
+kind create cluster --config=kind-config.yaml --name rancher-cluster
+
+## Instalação do Nginx Ingress Controller
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+
+Aguarde até que o controlador de ingresso esteja pronto
+
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=90s
+
+
+
+## Instalação do rancher
+helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
+
+Criação da namespace
+kubectl create namespace cattle-system
+
+Instalação do Cert-manager
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.yaml
+
+Aguardando os pods do cert-manager ficarem up
+kubectl wait --for=condition=ready pod -l app=cert-manager -n cert-manager --timeout=120s
+kubectl wait --for=condition=ready pod -l app=webhook -n cert-manager --timeout=120s
+
+Instalação do chart do helm
+helm install rancher rancher-stable/rancher \
+  --namespace cattle-system \
+  --set hostname=rancher.localhost \
+  --set bootstrapPassword=admin \
+  --set replicas=1
+
+## Logs do rancher
+
+kubectl logs -n cattle-system -l app=rancher
+
+## Usando o port-forward para acessar o Rancher via navegador
+
+kubectl port-forward -n cattle-system svc/rancher 8443:443
