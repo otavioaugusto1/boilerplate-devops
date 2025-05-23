@@ -1,5 +1,3 @@
-Claro! Vou explicar tudo desde o início, passo a passo.
-
 ## O que é a Stack ELK?
 
 **ELK** é o acrônimo para **Elasticsearch + Logstash + Kibana**, três ferramentas que trabalham juntas para coletar, processar, armazenar e visualizar dados (especialmente logs):
